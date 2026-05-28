@@ -6,6 +6,7 @@ import (
 	"hotel-app/internal/database"
 	"hotel-app/internal/handlers"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
@@ -18,7 +19,22 @@ func main() {
 	database.Connect()
 	database.Migrate()
 
+	r := setupRouter()
+	r.Run(":8080")
+}
+
+func setupRouter() *gin.Engine {
 	r := gin.Default()
+
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept"},
+		AllowCredentials: false,
+	}))
+
+	r.Static("/static", "./static")
+	r.StaticFile("/", "./static/index.html")
 
 	api := r.Group("/api")
 	{
@@ -75,5 +91,5 @@ func main() {
 		}
 	}
 
-	r.Run(":8080")
+	return r
 }
