@@ -20,10 +20,20 @@ function Modal({ title, onClose, children }) {
 // ── Hotel form ────────────────────────────────────────────────────────────────
 function HotelForm({ onSave }) {
   const [f, setF] = useState({ name: '', address: '', city: '', country: '', star_rating: 3, phone: '' })
+  const [phoneError, setPhoneError] = useState('')
   const set = k => e => setF(p => ({ ...p, [k]: e.target.value }))
+
+  const validatePhone = v => {
+    if (v && !/^\+[1-9]\d{7,14}$/.test(v)) {
+      setPhoneError('Формат: +380XXXXXXXXX (міжнародний)')
+    } else {
+      setPhoneError('')
+    }
+  }
 
   async function submit(e) {
     e.preventDefault()
+    if (phoneError) return
     await onSave({ ...f, star_rating: +f.star_rating })
   }
 

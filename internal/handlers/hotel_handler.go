@@ -5,6 +5,7 @@ import (
 
 	"hotel-app/internal/database"
 	"hotel-app/internal/models"
+	"hotel-app/internal/validation"
 
 	"github.com/gin-gonic/gin"
 )
@@ -46,6 +47,11 @@ func CreateHotel(c *gin.Context) {
 	var input CreateHotelInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if input.Phone != "" && !validation.IsValidPhone(input.Phone) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "невірний формат телефону, використовуйте +380XXXXXXXXX"})
 		return
 	}
 

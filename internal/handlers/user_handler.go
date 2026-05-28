@@ -5,6 +5,7 @@ import (
 
 	"hotel-app/internal/database"
 	"hotel-app/internal/models"
+	"hotel-app/internal/validation"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -50,6 +51,11 @@ func Register(c *gin.Context) {
 		return
 	}
 
+	if input.Phone != "" && !validation.IsValidPhone(input.Phone) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "невірний формат телефону, використовуйте +380XXXXXXXXX"})
+		return
+	}
+
 	hashed, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to hash password"})
@@ -82,6 +88,11 @@ func UpdateUser(c *gin.Context) {
 	var input UpdateUserInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if input.Phone != "" && !validation.IsValidPhone(input.Phone) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "невірний формат телефону, використовуйте +380XXXXXXXXX"})
 		return
 	}
 

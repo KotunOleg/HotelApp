@@ -23,7 +23,9 @@ func Connect() {
 		os.Getenv("DB_PORT"),
 	)
 
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+		DisableForeignKeyConstraintWhenMigrating: true,
+	})
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)
 	}

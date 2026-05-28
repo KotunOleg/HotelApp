@@ -62,8 +62,17 @@ export default function RegisterPage() {
             </div>
             <div>
               <label className="label">Телефон</label>
-              <input type="tel" className="input" placeholder="+380501234567"
-                value={form.phone} onChange={set('phone')} required />
+              <input
+                type="tel"
+                className={`input ${form.phone && !phoneValid ? 'border-red-400 focus:ring-red-400' : ''}`}
+                placeholder="+380501234567"
+                value={form.phone}
+                onChange={set('phone')}
+                required
+              />
+              {form.phone && !phoneValid && (
+                <p className="text-red-500 text-xs mt-1">Формат: +380XXXXXXXXX (міжнародний)</p>
+              )}
             </div>
             <div>
               <label className="label">Пароль</label>

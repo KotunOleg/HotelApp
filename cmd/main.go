@@ -2,6 +2,8 @@ package main
 
 import (
 	"log"
+	"net/http"
+	"strings"
 
 	"hotel-app/internal/database"
 	"hotel-app/internal/handlers"
@@ -33,8 +35,16 @@ func setupRouter() *gin.Engine {
 		AllowCredentials: false,
 	}))
 
-	r.Static("/static", "./static")
-	r.StaticFile("/", "./static/index.html")
+	// React assets (JS, CSS)
+	r.Static("/assets", "./static/assets")
+	// SPA fallback — all non-API routes serve index.html
+	r.NoRoute(func(c *gin.Context) {
+		if strings.HasPrefix(c.Request.URL.Path, "/api") {
+			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+			return
+		}
+		c.File("./static/index.html")
+	})
 
 	api := r.Group("/api")
 	{
