@@ -1,9 +1,10 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Hotel, LayoutDashboard, LogIn, UserPlus } from 'lucide-react'
+import { Hotel, LayoutDashboard, LogIn, UserPlus, CalendarDays } from 'lucide-react'
 
 const links = [
-  { to: '/',       label: 'Готелі',    icon: Hotel },
-  { to: '/admin',  label: 'Адмін',     icon: LayoutDashboard },
+  { to: '/',         label: 'Готелі',      icon: Hotel },
+  { to: '/bookings', label: 'Бронювання',  icon: CalendarDays },
+  { to: '/admin',    label: 'Адмін',       icon: LayoutDashboard },
 ]
 
 export default function Navbar() {

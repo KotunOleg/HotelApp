@@ -29,13 +29,20 @@ export const api = {
     delete: (id)     => request(`/beds/${id}`, { method: 'DELETE' }),
   },
   bookings: {
-    list:   ()     => request('/bookings'),
-    create: (data) => request('/bookings', { method: 'POST', body: data }),
-    cancel: (id)   => request(`/bookings/${id}`, { method: 'DELETE' }),
+    list:    ()     => request('/bookings'),
+    create:  (data) => request('/bookings', { method: 'POST', body: data }),
+    confirm: (id)   => request(`/bookings/${id}/confirm`, { method: 'PUT' }),
+    cancel:  (id)   => request(`/bookings/${id}`, { method: 'DELETE' }),
   },
   reviews: {
     list:   (hotelId) => request(`/reviews?hotel_id=${hotelId}`),
     create: (data)    => request('/reviews', { method: 'POST', body: data }),
+  },
+  users: {
+    list:    ()   => request('/users'),
+    block:   (id) => request(`/users/${id}/block`,   { method: 'PUT' }),
+    unblock: (id) => request(`/users/${id}/unblock`, { method: 'PUT' }),
+    delete:  (id) => request(`/users/${id}`,         { method: 'DELETE' }),
   },
   auth: {
     login:    (data) => request('/auth/login',    { method: 'POST', body: data }),

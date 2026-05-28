@@ -5,6 +5,7 @@ import HotelPage from './pages/HotelPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import AdminPage from './pages/AdminPage'
+import BookingsPage from './pages/BookingsPage'
 
 export default function App() {
   return (
@@ -18,6 +19,7 @@ export default function App() {
             <Route path="/login"       element={<LoginPage />} />
             <Route path="/register"    element={<RegisterPage />} />
             <Route path="/admin"       element={<AdminPage />} />
+            <Route path="/bookings"    element={<BookingsPage />} />
           </Routes>
         </main>
         <footer className="bg-gray-900 text-gray-400 text-center py-6 text-sm mt-16">

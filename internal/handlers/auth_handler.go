@@ -33,5 +33,10 @@ func Login(c *gin.Context) {
 		return
 	}
 
+	if user.IsBlacklisted {
+		c.JSON(http.StatusForbidden, gin.H{"error": "акаунт заблоковано. Зверніться до адміністратора"})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "login successful", "user_id": user.UserID})
 }

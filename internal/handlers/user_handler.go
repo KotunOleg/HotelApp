@@ -132,3 +132,31 @@ func DeleteUser(c *gin.Context) {
 	database.DB.Delete(&user)
 	c.JSON(http.StatusOK, gin.H{"message": "user deleted"})
 }
+
+func BlockUser(c *gin.Context) {
+	var user models.User
+	if err := database.DB.First(&user, c.Param("id")).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		return
+	}
+	if user.IsBlacklisted {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "користувач вже заблокований"})
+		return
+	}
+	database.DB.Model(&user).Update("is_blacklisted", true)
+	c.JSON(http.StatusOK, gin.H{"message": "користувача заблоковано", "user_id": user.UserID})
+}
+
+func UnblockUser(c *gin.Context) {
+	var user models.User
+	if err := database.DB.First(&user, c.Param("id")).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		return
+	}
+	if !user.IsBlacklisted {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "користувач не заблокований"})
+		return
+	}
+	database.DB.Model(&user).Update("is_blacklisted", false)
+	c.JSON(http.StatusOK, gin.H{"message": "користувача розблоковано", "user_id": user.UserID})
+}

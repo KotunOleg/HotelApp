@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Trash2, Hotel, BedDouble, RefreshCw, Settings2 } from 'lucide-react'
+import { Plus, Trash2, Hotel, BedDouble, RefreshCw, Users, ShieldBan, ShieldCheck, CalendarCheck, XCircle, CheckCircle } from 'lucide-react'
 import { api } from '../api'
 import StarRating from '../components/StarRating'
 
@@ -159,16 +159,27 @@ function HotelForm({ onSave }) {
 
 // ── Room form ─────────────────────────────────────────────────────────────────
 function RoomForm({ hotels, onSave }) {
-  const [f, setF] = useState({ hotel_id: hotels[0]?.hotel_id ?? '', room_number: '', room_type: 'standard', price_per_night: '', capacity: 2, floor: 1 })
+  const [f, setF]       = useState({ hotel_id: hotels[0]?.hotel_id ?? '', room_number: '', room_type: 'standard', price_per_night: '', capacity: 2, floor: 1 })
+  const [error, setError] = useState('')
   const set = k => e => setF(p => ({ ...p, [k]: e.target.value }))
 
   async function submit(e) {
     e.preventDefault()
-    await onSave({ ...f, hotel_id: +f.hotel_id, price_per_night: +f.price_per_night, capacity: +f.capacity, floor: +f.floor })
+    setError('')
+    try {
+      await onSave({ ...f, hotel_id: +f.hotel_id, price_per_night: +f.price_per_night, capacity: +f.capacity, floor: +f.floor })
+    } catch (err) {
+      setError(err.message)
+    }
   }
 
   return (
     <form onSubmit={submit} className="space-y-3">
+      {error && (
+        <div className="bg-red-50 border border-red-100 text-red-700 text-sm px-4 py-3 rounded-xl">
+          {error}
+        </div>
+      )}
       <div>
         <label className="label">Готель</label>
         <select className="input" value={f.hotel_id} onChange={set('hotel_id')} required>
@@ -211,26 +222,23 @@ export default function AdminPage() {
   const [tab, setTab]           = useState('hotels')
   const [hotels, setHotels]     = useState([])
   const [rooms, setRooms]       = useState([])
+  const [users, setUsers]       = useState([])
+  const [bookings, setBookings] = useState([])
   const [modal, setModal]       = useState(null)
   const [bedRoom, setBedRoom]   = useState(null)
   const [loading, setLoading]   = useState(true)
 
   const load = () => {
     setLoading(true)
-    Promise.all([api.hotels.list(), api.rooms.list({})])
-      .then(([h, r]) => { setHotels(h); setRooms(r) })
+    Promise.all([api.hotels.list(), api.rooms.list({}), api.users.list(), api.bookings.list()])
+      .then(([h, r, u, b]) => { setHotels(h); setRooms(r); setUsers(u); setBookings(b) })
       .catch(console.error)
       .finally(() => setLoading(false))
   }
 
   useEffect(load, [])
 
-  async function addHotel(data) {
-    await api.hotels.create(data)
-    setModal(null)
-    load()
-  }
-
+  async function addHotel(data) { await api.hotels.create(data); setModal(null); load() }
   async function addRoom(data) {
     await api.rooms.create(data)
     setModal(null)
@@ -239,19 +247,54 @@ export default function AdminPage() {
 
   async function deleteHotel(id) {
     if (!confirm('Видалити готель?')) return
-    await api.hotels.delete(id)
+    await api.hotels.delete(id); load()
+  }
+  async function deleteRoom(id) {
+    if (!confirm('Видалити кімнату?')) return
+    await api.rooms.delete(id); load()
+  }
+  async function confirmBooking(id) {
+    await api.bookings.confirm(id)
+    load()
+  }
+  async function cancelBooking(id) {
+    if (!confirm('Скасувати бронювання?')) return
+    await api.bookings.cancel(id)
     load()
   }
 
-  async function deleteRoom(id) {
-    if (!confirm('Видалити кімнату?')) return
-    await api.rooms.delete(id)
+  async function deleteUser(id) {
+    if (!confirm('Видалити користувача?')) return
+    await api.users.delete(id); load()
+  }
+  async function toggleBlock(user) {
+    if (user.is_blacklisted) {
+      await api.users.unblock(user.user_id)
+    } else {
+      if (!confirm(`Заблокувати ${user.full_name}?`)) return
+      await api.users.block(user.user_id)
+    }
     load()
+  }
+
+  const blockedCount = users.filter(u => u.is_blacklisted).length
+  const pendingCount = bookings.filter(b => b.status === 'pending').length
+
+  const BOOKING_STATUS = {
+    pending:   { label: 'Очікує',        cls: 'bg-yellow-100 text-yellow-700' },
+    confirmed: { label: 'Підтверджено',  cls: 'bg-green-100 text-green-700' },
+    cancelled: { label: 'Скасовано',     cls: 'bg-red-100 text-red-600' },
+  }
+
+  function formatDate(iso) {
+    return new Date(iso).toLocaleDateString('uk-UA', { day: '2-digit', month: 'short', year: 'numeric' })
   }
 
   const tabs = [
-    { id: 'hotels', label: 'Готелі',  icon: Hotel,    count: hotels.length },
-    { id: 'rooms',  label: 'Кімнати', icon: BedDouble, count: rooms.length },
+    { id: 'hotels',   label: 'Готелі',      icon: Hotel,         count: hotels.length },
+    { id: 'rooms',    label: 'Кімнати',     icon: BedDouble,     count: rooms.length },
+    { id: 'bookings', label: 'Бронювання',  icon: CalendarCheck, count: bookings.length, badge: pendingCount },
+    { id: 'users',    label: 'Користувачі', icon: Users,         count: users.length },
   ]
 
   return (
@@ -268,15 +311,20 @@ export default function AdminPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit mb-8">
-        {tabs.map(({ id, label, icon: Icon, count }) => (
+        {tabs.map(({ id, label, icon: Icon, count, badge }) => (
           <button key={id} onClick={() => setTab(id)}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${
+            className={`relative flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${
               tab === id ? 'bg-white shadow text-brand-700' : 'text-gray-600 hover:text-gray-900'
             }`}>
             <Icon size={16} /> {label}
             <span className={`text-xs px-1.5 py-0.5 rounded-full ${tab === id ? 'bg-brand-100 text-brand-700' : 'bg-gray-200 text-gray-500'}`}>
               {count}
             </span>
+            {badge > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center">
+                {badge}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -392,6 +440,169 @@ export default function AdminPage() {
               <div className="text-center py-12 text-gray-400">
                 <BedDouble size={32} className="mx-auto mb-2 opacity-30" />
                 <p>Кімнат ще немає</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Bookings table */}
+      {tab === 'bookings' && (
+        <div>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="font-semibold text-gray-800">
+              Всі бронювання
+              {pendingCount > 0 && (
+                <span className="ml-2 text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-medium">
+                  {pendingCount} очікують
+                </span>
+              )}
+            </h2>
+          </div>
+          <div className="card overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-100">
+                <tr>{['#', 'Кімната', 'Користувач', 'Заїзд', 'Виїзд', 'Сума', 'Статус', 'Дії'].map(h => (
+                  <th key={h} className="text-left px-4 py-3 text-gray-500 font-medium">{h}</th>
+                ))}</tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {loading
+                  ? Array.from({ length: 3 }).map((_, i) => (
+                      <tr key={i}>{Array.from({ length: 8 }).map((_, j) => (
+                        <td key={j} className="px-4 py-3"><div className="h-4 bg-gray-100 rounded animate-pulse" /></td>
+                      ))}</tr>
+                    ))
+                  : bookings.map(b => {
+                      const cfg = BOOKING_STATUS[b.status] ?? { label: b.status, cls: 'bg-gray-100 text-gray-600' }
+                      return (
+                        <tr key={b.booking_id} className={`transition-colors ${b.status === 'pending' ? 'bg-yellow-50 hover:bg-yellow-100' : 'hover:bg-gray-50'}`}>
+                          <td className="px-4 py-3 text-gray-400 font-mono">#{b.booking_id}</td>
+                          <td className="px-4 py-3 text-gray-700">
+                            {b.room ? `Кімната ${b.room.room_number}` : `Room #${b.room_id}`}
+                          </td>
+                          <td className="px-4 py-3 text-gray-600">User #{b.user_id}</td>
+                          <td className="px-4 py-3 text-gray-600">{formatDate(b.check_in_date)}</td>
+                          <td className="px-4 py-3 text-gray-600">{formatDate(b.check_out_date)}</td>
+                          <td className="px-4 py-3 font-semibold text-gray-900">{b.total_price?.toLocaleString()} ₴</td>
+                          <td className="px-4 py-3">
+                            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${cfg.cls}`}>
+                              {cfg.label}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              {b.status === 'pending' && (
+                                <button
+                                  onClick={() => confirmBooking(b.booking_id)}
+                                  className="flex items-center gap-1 text-xs font-medium bg-green-50 text-green-700 hover:bg-green-100 px-3 py-1.5 rounded-lg transition-all"
+                                >
+                                  <CheckCircle size={13} /> Підтвердити
+                                </button>
+                              )}
+                              {b.status !== 'cancelled' && (
+                                <button
+                                  onClick={() => cancelBooking(b.booking_id)}
+                                  className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 transition-colors"
+                                >
+                                  <XCircle size={14} />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })
+                }
+              </tbody>
+            </table>
+            {!loading && bookings.length === 0 && (
+              <div className="text-center py-12 text-gray-400">
+                <CalendarCheck size={32} className="mx-auto mb-2 opacity-30" />
+                <p>Бронювань ще немає</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Users table */}
+      {tab === 'users' && (
+        <div>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="font-semibold text-gray-800">
+              Користувачі
+              {blockedCount > 0 && (
+                <span className="ml-2 text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-medium">
+                  {blockedCount} заблокованих
+                </span>
+              )}
+            </h2>
+          </div>
+          <div className="card overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-100">
+                <tr>{["Ім'я", 'Email', 'Телефон', 'Статус', 'Дії'].map(h => (
+                  <th key={h} className="text-left px-4 py-3 text-gray-500 font-medium">{h}</th>
+                ))}</tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {loading
+                  ? Array.from({ length: 3 }).map((_, i) => (
+                      <tr key={i}>{Array.from({ length: 5 }).map((_, j) => (
+                        <td key={j} className="px-4 py-3">
+                          <div className="h-4 bg-gray-100 rounded animate-pulse" />
+                        </td>
+                      ))}</tr>
+                    ))
+                  : users.map(u => (
+                      <tr key={u.user_id} className={`transition-colors ${u.is_blacklisted ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50'}`}>
+                        <td className="px-4 py-3 font-medium text-gray-900">{u.full_name}</td>
+                        <td className="px-4 py-3 text-gray-600">{u.email}</td>
+                        <td className="px-4 py-3 text-gray-500">{u.phone || '—'}</td>
+                        <td className="px-4 py-3">
+                          {u.is_blacklisted ? (
+                            <span className="inline-flex items-center gap-1 text-xs font-medium bg-red-100 text-red-700 px-2.5 py-1 rounded-full">
+                              <ShieldBan size={12} /> Заблокований
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-xs font-medium bg-green-100 text-green-700 px-2.5 py-1 rounded-full">
+                              <ShieldCheck size={12} /> Активний
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => toggleBlock(u)}
+                              className={`flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-lg transition-all ${
+                                u.is_blacklisted
+                                  ? 'bg-green-50 text-green-700 hover:bg-green-100'
+                                  : 'bg-red-50 text-red-600 hover:bg-red-100'
+                              }`}
+                            >
+                              {u.is_blacklisted
+                                ? <><ShieldCheck size={13} /> Розблокувати</>
+                                : <><ShieldBan size={13} /> Заблокувати</>
+                              }
+                            </button>
+                            <button
+                              onClick={() => deleteUser(u.user_id)}
+                              className="text-red-400 hover:text-red-600 transition-colors"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                }
+              </tbody>
+            </table>
+            {!loading && users.length === 0 && (
+              <div className="text-center py-12 text-gray-400">
+                <Users size={32} className="mx-auto mb-2 opacity-30" />
+                <p>Користувачів ще немає</p>
               </div>
             )}
           </div>

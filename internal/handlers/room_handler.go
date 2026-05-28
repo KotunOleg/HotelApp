@@ -7,6 +7,7 @@ import (
 	"hotel-app/internal/models"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type CreateRoomInput struct {
@@ -20,7 +21,14 @@ type CreateRoomInput struct {
 
 func GetRooms(c *gin.Context) {
 	var rooms []models.Room
-	query := database.DB.Preload("Beds")
+
+	// preload beds + active future bookings (for showing occupied dates)
+	query := database.DB.
+		Preload("Beds").
+		Preload("Bookings", func(db *gorm.DB) *gorm.DB {
+			return db.Where("status != 'cancelled' AND check_out_date > NOW()").
+				Order("check_in_date ASC")
+		})
 
 	if roomType := c.Query("type"); roomType != "" {
 		query = query.Where("room_type = ?", roomType)
@@ -30,6 +38,16 @@ func GetRooms(c *gin.Context) {
 	}
 	if status := c.Query("status"); status != "" {
 		query = query.Where("status = ?", status)
+	}
+
+	// filter by date availability
+	checkIn  := c.Query("check_in")
+	checkOut := c.Query("check_out")
+	if checkIn != "" && checkOut != "" {
+		query = query.Where(
+			"room_id NOT IN (SELECT room_id FROM bookings WHERE status != 'cancelled' AND check_in_date < ? AND check_out_date > ?)",
+			checkOut, checkIn,
+		)
 	}
 
 	query.Find(&rooms)
@@ -49,6 +67,12 @@ func CreateRoom(c *gin.Context) {
 	var input CreateRoomInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var existing models.Room
+	if err := database.DB.Where("hotel_id = ? AND room_number = ?", input.HotelID, input.RoomNumber).First(&existing).Error; err == nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "кімната з таким номером вже існує в цьому готелі"})
 		return
 	}
 

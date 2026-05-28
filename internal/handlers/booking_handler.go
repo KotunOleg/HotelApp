@@ -46,13 +46,23 @@ func CreateBooking(c *gin.Context) {
 		return
 	}
 
+	var room models.Room
+	if err := database.DB.First(&room, input.RoomID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "кімнату не знайдено"})
+		return
+	}
+	if room.Status == "occupied" {
+		c.JSON(http.StatusConflict, gin.H{"error": "кімната зайнята"})
+		return
+	}
+
 	var conflict models.Booking
 	err := database.DB.Where(
 		"room_id = ? AND check_in_date < ? AND check_out_date > ? AND status != 'cancelled'",
 		input.RoomID, input.CheckOutDate, input.CheckInDate,
 	).First(&conflict).Error
 	if err == nil {
-		c.JSON(http.StatusConflict, gin.H{"error": "room is not available for selected dates"})
+		c.JSON(http.StatusConflict, gin.H{"error": "кімната вже заброньована на ці дати"})
 		return
 	}
 
@@ -67,6 +77,24 @@ func CreateBooking(c *gin.Context) {
 	}
 	database.DB.Create(&booking)
 	c.JSON(http.StatusCreated, booking)
+}
+
+func ConfirmBooking(c *gin.Context) {
+	var booking models.Booking
+	if err := database.DB.First(&booking, c.Param("id")).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "booking not found"})
+		return
+	}
+	if booking.Status != "pending" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "можна підтвердити лише бронювання зі статусом 'pending'"})
+		return
+	}
+	database.DB.Model(&booking).Update("status", "confirmed")
+
+	// mark room as occupied
+	database.DB.Model(&models.Room{}).Where("room_id = ?", booking.RoomID).Update("status", "occupied")
+
+	c.JSON(http.StatusOK, gin.H{"message": "бронювання підтверджено", "booking_id": booking.BookingID})
 }
 
 func DeleteBooking(c *gin.Context) {

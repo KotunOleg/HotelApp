@@ -60,6 +60,8 @@ func setupRouter() *gin.Engine {
 			users.GET("/:id", handlers.GetUser)
 			users.PUT("/:id", handlers.UpdateUser)
 			users.PUT("/:id/password", handlers.ChangePassword)
+			users.PUT("/:id/block", handlers.BlockUser)
+			users.PUT("/:id/unblock", handlers.UnblockUser)
 			users.DELETE("/:id", handlers.DeleteUser)
 		}
 
@@ -85,6 +87,7 @@ func setupRouter() *gin.Engine {
 			bookings.GET("", handlers.GetBookings)
 			bookings.GET("/:id", handlers.GetBooking)
 			bookings.POST("", handlers.CreateBooking)
+			bookings.PUT("/:id/confirm", handlers.ConfirmBooking)
 			bookings.DELETE("/:id", handlers.DeleteBooking)
 		}
 
