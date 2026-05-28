@@ -88,6 +88,13 @@ func setupRouter() *gin.Engine {
 			bookings.DELETE("/:id", handlers.DeleteBooking)
 		}
 
+		beds := api.Group("/beds")
+		{
+			beds.GET("", handlers.GetBeds)
+			beds.POST("", handlers.CreateBed)
+			beds.DELETE("/:id", handlers.DeleteBed)
+		}
+
 		reviews := api.Group("/reviews")
 		{
 			reviews.GET("", handlers.GetReviews)

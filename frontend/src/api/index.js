@@ -23,6 +23,11 @@ export const api = {
     create: (data)   => request('/rooms', { method: 'POST', body: data }),
     delete: (id)     => request(`/rooms/${id}`, { method: 'DELETE' }),
   },
+  beds: {
+    list:   (roomId) => request(`/beds?room_id=${roomId}`),
+    create: (data)   => request('/beds', { method: 'POST', body: data }),
+    delete: (id)     => request(`/beds/${id}`, { method: 'DELETE' }),
+  },
   bookings: {
     list:   ()     => request('/bookings'),
     create: (data) => request('/bookings', { method: 'POST', body: data }),

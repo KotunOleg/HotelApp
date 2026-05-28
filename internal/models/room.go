@@ -9,6 +9,7 @@ type Room struct {
 	PricePerNight float64   `gorm:"type:decimal(10,2);not null" json:"price_per_night"`
 	Capacity      int       `gorm:"not null" json:"capacity"`
 	Floor         int       `gorm:"not null" json:"floor"`
-	Status        string    `gorm:"not null;default:'available'" json:"status"`
-	Bookings      []Booking `gorm:"foreignKey:RoomID;references:RoomID" json:"bookings,omitempty"`
+	Status   string    `gorm:"not null;default:'available'" json:"status"`
+	Beds     []Bed     `gorm:"foreignKey:RoomID;references:RoomID" json:"beds,omitempty"`
+	Bookings []Booking `gorm:"foreignKey:RoomID;references:RoomID" json:"bookings,omitempty"`
 }

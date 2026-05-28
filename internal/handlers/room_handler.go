@@ -20,7 +20,7 @@ type CreateRoomInput struct {
 
 func GetRooms(c *gin.Context) {
 	var rooms []models.Room
-	query := database.DB
+	query := database.DB.Preload("Beds")
 
 	if roomType := c.Query("type"); roomType != "" {
 		query = query.Where("room_type = ?", roomType)
@@ -38,7 +38,7 @@ func GetRooms(c *gin.Context) {
 
 func GetRoom(c *gin.Context) {
 	var room models.Room
-	if err := database.DB.First(&room, c.Param("id")).Error; err != nil {
+	if err := database.DB.Preload("Beds").First(&room, c.Param("id")).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "room not found"})
 		return
 	}

@@ -1,8 +1,27 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { MapPin, Phone, ArrowLeft, BedDouble, Users, Star, Send } from 'lucide-react'
+import { MapPin, Phone, ArrowLeft, BedDouble, Users, Send, X } from 'lucide-react'
 import { api } from '../api'
 import StarRating from '../components/StarRating'
+
+const TYPE_UA = { standard: 'стандарт', deluxe: 'делюкс', suite: 'люкс' }
+
+const BED_UA = { single: 'односпальне', double: 'двоспальне', queen: 'queen', king: 'king', sofa: 'диван-ліжко' }
+
+function bedsLabel(beds) {
+  if (!beds?.length) return null
+  const counts = beds.reduce((acc, b) => {
+    const label = BED_UA[b.bed_type] ?? b.bed_type
+    acc[label] = (acc[label] ?? 0) + 1
+    return acc
+  }, {})
+  return Object.entries(counts).map(([type, n]) => `${n}× ${type}`).join(' • ')
+}
+
+function roomLabel(room) {
+  const type = TYPE_UA[room.room_type] ?? room.room_type
+  return `${room.capacity}-місний ${type}`
+}
 
 function RoomCard({ room, onBook }) {
   const typeColor = {
@@ -19,9 +38,9 @@ function RoomCard({ room, onBook }) {
     <div className="card p-5 flex flex-col sm:flex-row sm:items-center gap-4">
       <div className="flex-1 space-y-2">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-semibold text-gray-900">Кімната {room.room_number}</span>
+          <span className="font-semibold text-gray-900">{roomLabel(room)}</span>
           <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${typeColor}`}>
-            {room.room_type}
+            {TYPE_UA[room.room_type] ?? room.room_type}
           </span>
           <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusColor}`}>
             {room.status === 'available' ? 'Вільна' : 'Зайнята'}
@@ -31,6 +50,11 @@ function RoomCard({ room, onBook }) {
           <span className="flex items-center gap-1"><Users size={14} /> {room.capacity} осіб</span>
           <span className="flex items-center gap-1"><BedDouble size={14} /> Поверх {room.floor}</span>
         </div>
+        {bedsLabel(room.beds) && (
+          <p className="text-xs text-gray-400 flex items-center gap-1">
+            <BedDouble size={12} /> {bedsLabel(room.beds)}
+          </p>
+        )}
       </div>
       <div className="flex items-center gap-4">
         <div className="text-right">
@@ -81,7 +105,7 @@ function BookingModal({ room, hotelId, onClose }) {
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
         <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-          <h3 className="text-lg font-bold">Бронювання кімнати {room.room_number}</h3>
+          <h3 className="text-lg font-bold">Бронювання — {roomLabel(room)}</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
         </div>
 
@@ -149,6 +173,28 @@ export default function HotelPage() {
   const [review, setReview]       = useState({ content: '', rating: 5 })
   const [loading, setLoading]     = useState(true)
 
+  const [filterType,     setFilterType]     = useState('')
+  const [filterStatus,   setFilterStatus]   = useState('')
+  const [filterCapacity, setFilterCapacity] = useState('')
+  const [filterMaxPrice, setFilterMaxPrice] = useState('')
+
+  const roomTypes = useMemo(() => [...new Set(rooms.map(r => r.room_type))], [rooms])
+  const maxPrice  = useMemo(() => Math.max(0, ...rooms.map(r => r.price_per_night)), [rooms])
+
+  const activeRoomFilters = [filterType, filterStatus, filterCapacity, filterMaxPrice].filter(Boolean).length
+
+  function resetRoomFilters() {
+    setFilterType(''); setFilterStatus(''); setFilterCapacity(''); setFilterMaxPrice('')
+  }
+
+  const filteredRooms = useMemo(() => rooms.filter(r => {
+    const matchType     = !filterType     || r.room_type === filterType
+    const matchStatus   = !filterStatus   || r.status === filterStatus
+    const matchCapacity = !filterCapacity || r.capacity >= +filterCapacity
+    const matchPrice    = !filterMaxPrice || r.price_per_night <= +filterMaxPrice
+    return matchType && matchStatus && matchCapacity && matchPrice
+  }), [rooms, filterType, filterStatus, filterCapacity, filterMaxPrice])
+
   useEffect(() => {
     Promise.all([
       api.hotels.get(id),
@@ -213,14 +259,89 @@ export default function HotelPage() {
       {/* Rooms */}
       <section className="mb-12">
         <h2 className="text-xl font-bold text-gray-900 mb-4">
-          Кімнати <span className="text-gray-400 font-normal text-base">({rooms.length})</span>
+          Кімнати{' '}
+          <span className="text-gray-400 font-normal text-base">
+            ({filteredRooms.length}{activeRoomFilters > 0 ? ` з ${rooms.length}` : ''})
+          </span>
         </h2>
-        {rooms.length === 0
-          ? <p className="text-gray-400 text-sm">Кімнати відсутні</p>
-          : <div className="space-y-3">
-              {rooms.map(r => <RoomCard key={r.room_id} room={r} onBook={setBooking} />)}
+
+        {/* Room filters */}
+        {rooms.length > 0 && (
+          <div className="bg-gray-50 rounded-xl p-4 mb-4 flex flex-wrap gap-3 items-end">
+            <div>
+              <p className="text-xs font-medium text-gray-500 mb-1">Тип</p>
+              <select
+                value={filterType}
+                onChange={e => setFilterType(e.target.value)}
+                className="input text-sm py-1.5 w-36"
+              >
+                <option value="">Всі типи</option>
+                {roomTypes.map(t => (
+                  <option key={t} value={t}>{TYPE_UA[t] ?? t}</option>
+                ))}
+              </select>
             </div>
-        }
+
+            <div>
+              <p className="text-xs font-medium text-gray-500 mb-1">Статус</p>
+              <select
+                value={filterStatus}
+                onChange={e => setFilterStatus(e.target.value)}
+                className="input text-sm py-1.5 w-36"
+              >
+                <option value="">Всі</option>
+                <option value="available">Вільні</option>
+                <option value="occupied">Зайняті</option>
+              </select>
+            </div>
+
+            <div>
+              <p className="text-xs font-medium text-gray-500 mb-1">Мін. місць</p>
+              <input
+                type="number" min={1}
+                placeholder="Будь-яка"
+                value={filterCapacity}
+                onChange={e => setFilterCapacity(e.target.value)}
+                className="input text-sm py-1.5 w-32"
+              />
+            </div>
+
+            <div>
+              <p className="text-xs font-medium text-gray-500 mb-1">Макс. ціна ₴</p>
+              <input
+                type="number" min={0}
+                placeholder={maxPrice ? maxPrice.toLocaleString() : '—'}
+                value={filterMaxPrice}
+                onChange={e => setFilterMaxPrice(e.target.value)}
+                className="input text-sm py-1.5 w-36"
+              />
+            </div>
+
+            {activeRoomFilters > 0 && (
+              <button
+                onClick={resetRoomFilters}
+                className="flex items-center gap-1 text-sm text-red-500 hover:text-red-700 pb-1"
+              >
+                <X size={14} /> Скинути
+              </button>
+            )}
+          </div>
+        )}
+
+        {rooms.length === 0 ? (
+          <p className="text-gray-400 text-sm">Кімнати відсутні</p>
+        ) : filteredRooms.length === 0 ? (
+          <div className="text-center py-10 text-gray-400">
+            <p>Жодна кімната не відповідає фільтрам</p>
+            <button onClick={resetRoomFilters} className="btn-secondary text-sm mt-3">
+              Скинути фільтри
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filteredRooms.map(r => <RoomCard key={r.room_id} room={r} onBook={setBooking} />)}
+          </div>
+        )}
       </section>
 
       {/* Reviews */}

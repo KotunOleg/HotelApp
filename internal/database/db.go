@@ -40,6 +40,7 @@ func Migrate() {
 		&models.Hotel{},
 		&models.User{},
 		&models.Room{},
+		&models.Bed{},
 		&models.DiscountProgram{},
 		&models.UserDiscount{},
 		&models.Booking{},

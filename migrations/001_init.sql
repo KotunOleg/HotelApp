@@ -35,6 +35,13 @@ CREATE TABLE IF NOT EXISTS rooms (
     status          VARCHAR(50) NOT NULL DEFAULT 'available'
 );
 
+CREATE TABLE IF NOT EXISTS beds (
+    bed_id   SERIAL PRIMARY KEY,
+    room_id  INTEGER NOT NULL REFERENCES rooms(room_id) ON DELETE CASCADE,
+    bed_type VARCHAR(50) NOT NULL CHECK (bed_type IN ('single','double','queen','king','sofa')),
+    capacity INTEGER NOT NULL DEFAULT 1 CHECK (capacity BETWEEN 1 AND 4)
+);
+
 CREATE TABLE IF NOT EXISTS discount_programs (
     discount_id      SERIAL PRIMARY KEY,
     name             VARCHAR(255) NOT NULL,

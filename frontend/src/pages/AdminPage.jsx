@@ -1,7 +1,99 @@
 import { useState, useEffect } from 'react'
-import { Plus, Trash2, Hotel, BedDouble, RefreshCw } from 'lucide-react'
+import { Plus, Trash2, Hotel, BedDouble, RefreshCw, Settings2 } from 'lucide-react'
 import { api } from '../api'
 import StarRating from '../components/StarRating'
+
+const BED_TYPES = [
+  { value: 'single', label: 'Односпальне (1 ос.)' },
+  { value: 'double', label: 'Двоспальне (2 ос.)' },
+  { value: 'queen',  label: 'Queen-size (2 ос.)' },
+  { value: 'king',   label: 'King-size (2 ос.)' },
+  { value: 'sofa',   label: 'Диван-ліжко (1 ос.)' },
+]
+
+const BED_CAPACITY = { single: 1, double: 2, queen: 2, king: 2, sofa: 1 }
+
+function BedManager({ room, onClose }) {
+  const [beds, setBeds]     = useState(room.beds ?? [])
+  const [type, setType]     = useState('double')
+  const [loading, setLoading] = useState(false)
+
+  async function addBed() {
+    setLoading(true)
+    try {
+      const bed = await api.beds.create({
+        room_id:  room.room_id,
+        bed_type: type,
+        capacity: BED_CAPACITY[type] ?? 1,
+      })
+      setBeds(prev => [...prev, bed])
+    } catch (err) { alert(err.message) }
+    finally { setLoading(false) }
+  }
+
+  async function deleteBed(id) {
+    await api.beds.delete(id)
+    setBeds(prev => prev.filter(b => b.bed_id !== id))
+  }
+
+  const totalCapacity = beds.reduce((s, b) => s + b.capacity, 0)
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        <div className="flex items-center justify-between p-5 border-b border-gray-100">
+          <div>
+            <h3 className="font-bold text-gray-900">Ліжка — кімната {room.room_number}</h3>
+            <p className="text-xs text-gray-400 mt-0.5">Загальна місткість: {totalCapacity} ос.</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {/* Add bed */}
+          <div className="flex gap-2">
+            <select
+              value={type}
+              onChange={e => setType(e.target.value)}
+              className="input text-sm flex-1"
+            >
+              {BED_TYPES.map(b => <option key={b.value} value={b.value}>{b.label}</option>)}
+            </select>
+            <button onClick={addBed} disabled={loading} className="btn-primary text-sm whitespace-nowrap flex items-center gap-1">
+              <Plus size={15} /> Додати
+            </button>
+          </div>
+
+          {/* Beds list */}
+          {beds.length === 0 ? (
+            <div className="text-center py-6 text-gray-400">
+              <BedDouble size={28} className="mx-auto mb-2 opacity-30" />
+              <p className="text-sm">Ліжок ще немає</p>
+            </div>
+          ) : (
+            <ul className="divide-y divide-gray-50">
+              {beds.map(b => {
+                const label = BED_TYPES.find(t => t.value === b.bed_type)?.label ?? b.bed_type
+                return (
+                  <li key={b.bed_id} className="flex items-center justify-between py-2.5">
+                    <div className="flex items-center gap-2">
+                      <BedDouble size={16} className="text-brand-400" />
+                      <span className="text-sm text-gray-800">{label}</span>
+                      <span className="text-xs text-gray-400">{b.capacity} ос.</span>
+                    </div>
+                    <button onClick={() => deleteBed(b.bed_id)} className="text-red-400 hover:text-red-600">
+                      <Trash2 size={15} />
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function Modal({ title, onClose, children }) {
   return (
@@ -116,11 +208,12 @@ function RoomForm({ hotels, onSave }) {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function AdminPage() {
-  const [tab, setTab]         = useState('hotels')
-  const [hotels, setHotels]   = useState([])
-  const [rooms, setRooms]     = useState([])
-  const [modal, setModal]     = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [tab, setTab]           = useState('hotels')
+  const [hotels, setHotels]     = useState([])
+  const [rooms, setRooms]       = useState([])
+  const [modal, setModal]       = useState(null)
+  const [bedRoom, setBedRoom]   = useState(null)
+  const [loading, setLoading]   = useState(true)
 
   const load = () => {
     setLoading(true)
@@ -252,16 +345,19 @@ export default function AdminPage() {
           <div className="card overflow-hidden">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-100">
-                <tr>{['Номер','Тип','Ціна/ніч','Місць','Поверх','Статус','Hotel ID',''].map(h => (
+                <tr>{['Назва','Тип','Ціна/ніч','Місць','Поверх','Ліжка','Статус',''].map(h => (
                   <th key={h} className="text-left px-4 py-3 text-gray-500 font-medium">{h}</th>
                 ))}</tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {rooms.map(r => {
                   const typeColor = {standard:'bg-blue-50 text-blue-700',deluxe:'bg-purple-50 text-purple-700',suite:'bg-amber-50 text-amber-700'}[r.room_type]??'bg-gray-50 text-gray-700'
+                  const bedCount  = r.beds?.length ?? 0
                   return (
                     <tr key={r.room_id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3 font-medium text-gray-900">{r.room_number}</td>
+                      <td className="px-4 py-3 font-medium text-gray-900">
+                        {r.capacity}-місний {r.room_type}
+                      </td>
                       <td className="px-4 py-3">
                         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${typeColor}`}>{r.room_type}</span>
                       </td>
@@ -269,11 +365,19 @@ export default function AdminPage() {
                       <td className="px-4 py-3 text-gray-600">{r.capacity}</td>
                       <td className="px-4 py-3 text-gray-600">{r.floor}</td>
                       <td className="px-4 py-3">
+                        <button
+                          onClick={() => setBedRoom(r)}
+                          className="flex items-center gap-1 text-brand-600 hover:text-brand-800 text-xs font-medium"
+                        >
+                          <BedDouble size={14} />
+                          {bedCount > 0 ? `${bedCount} шт.` : 'Додати'}
+                        </button>
+                      </td>
+                      <td className="px-4 py-3">
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${r.status==='available'?'bg-green-100 text-green-700':'bg-red-100 text-red-700'}`}>
                           {r.status==='available'?'Вільна':'Зайнята'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-gray-400">#{r.hotel_id}</td>
                       <td className="px-4 py-3">
                         <button onClick={() => deleteRoom(r.room_id)} className="text-red-400 hover:text-red-600 transition-colors">
                           <Trash2 size={16} />
@@ -292,6 +396,10 @@ export default function AdminPage() {
             )}
           </div>
         </div>
+      )}
+
+      {bedRoom && (
+        <BedManager room={bedRoom} onClose={() => { setBedRoom(null); load() }} />
       )}
 
       {modal === 'hotel' && (
