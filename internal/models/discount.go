@@ -11,17 +11,17 @@ type DiscountProgram struct {
 	IsActive        bool           `gorm:"not null;default:true" json:"is_active"`
 	StartDate       time.Time      `gorm:"type:date;not null" json:"start_date"`
 	EndDate         time.Time      `gorm:"type:date;not null" json:"end_date"`
-	UserDiscounts   []UserDiscount `json:"user_discounts,omitempty"`
-	Bookings        []Booking      `json:"bookings,omitempty"`
+	UserDiscounts   []UserDiscount `gorm:"foreignKey:DiscountID;references:DiscountID" json:"user_discounts,omitempty"`
+	Bookings        []Booking      `gorm:"foreignKey:DiscountID;references:DiscountID" json:"bookings,omitempty"`
 }
 
 type UserDiscount struct {
 	UserDiscountID int             `gorm:"primaryKey;autoIncrement" json:"user_discount_id"`
 	UserID         int             `gorm:"not null" json:"user_id"`
-	User           User            `json:"user,omitempty"`
+	User           User            `gorm:"foreignKey:UserID;references:UserID" json:"user,omitempty"`
 	DiscountID     int             `gorm:"not null" json:"discount_id"`
-	Discount       DiscountProgram `json:"discount,omitempty"`
-	JoinedAt       time.Time       `gorm:"not null;default:now()" json:"joined_at"`
+	Discount       DiscountProgram `gorm:"foreignKey:DiscountID;references:DiscountID" json:"discount,omitempty"`
+	JoinedAt       time.Time       `gorm:"not null;autoCreateTime" json:"joined_at"`
 	TotalBookings  int             `gorm:"not null;default:0" json:"total_bookings"`
 	IsActive       bool            `gorm:"not null;default:true" json:"is_active"`
 }

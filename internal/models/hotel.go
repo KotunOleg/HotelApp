@@ -6,8 +6,8 @@ type Hotel struct {
 	Address    string   `gorm:"not null" json:"address"`
 	City       string   `gorm:"not null" json:"city"`
 	Country    string   `gorm:"not null" json:"country"`
-	StarRating int      `gorm:"check:star_rating between 1 and 5" json:"star_rating"`
+	StarRating int      `json:"star_rating"`
 	Phone      string   `json:"phone"`
-	Rooms      []Room   `json:"rooms,omitempty"`
-	Reviews    []Review `json:"reviews,omitempty"`
+	Rooms      []Room   `gorm:"foreignKey:HotelID;references:HotelID" json:"rooms,omitempty"`
+	Reviews    []Review `gorm:"foreignKey:HotelID;references:HotelID" json:"reviews,omitempty"`
 }
