@@ -44,8 +44,14 @@ function HotelForm({ onSave }) {
         .map(([k, l, p]) => (
           <div key={k}>
             <label className="label">{l}</label>
-            <input className="input" placeholder={p} value={f[k]} onChange={set(k)}
-              required={k !== 'phone'} />
+            <input
+              className={`input ${k === 'phone' && phoneError ? 'border-red-400 focus:ring-red-400' : ''}`}
+              placeholder={p} value={f[k]} required={k !== 'phone'}
+              onChange={e => { set(k)(e); if (k === 'phone') validatePhone(e.target.value) }}
+            />
+            {k === 'phone' && phoneError && (
+              <p className="text-red-500 text-xs mt-1">{phoneError}</p>
+            )}
           </div>
         ))}
       <div>
