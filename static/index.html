@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <title>Hotel App</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <h1>Hotel App — Управління готелями</h1>
+
+  <section>
+    <h3>Додати готель</h3>
+    <form action="javascript:void(0);" method="POST" onsubmit="addHotel()">
+      <input type="text"   id="add-name"    placeholder="Назва" required>
+      <input type="text"   id="add-address" placeholder="Адреса" required>
+      <input type="text"   id="add-city"    placeholder="Місто" required>
+      <input type="text"   id="add-country" placeholder="Країна" required>
+      <input type="number" id="add-stars"   placeholder="Зірки (1-5)" min="1" max="5" required>
+      <input type="text"   id="add-phone"   placeholder="Телефон">
+      <input type="submit" value="Додати">
+    </form>
+  </section>
+
+  <div id="editHotel" style="display:none;">
+    <h3>Редагувати</h3>
+    <form action="javascript:void(0);" onsubmit="updateHotel()">
+      <input type="hidden" id="edit-id">
+      <input type="text"   id="edit-name"    placeholder="Назва">
+      <input type="text"   id="edit-address" placeholder="Адреса">
+      <input type="text"   id="edit-city"    placeholder="Місто">
+      <input type="text"   id="edit-country" placeholder="Країна">
+      <input type="number" id="edit-stars"   placeholder="Зірки" min="1" max="5">
+      <input type="text"   id="edit-phone"   placeholder="Телефон">
+      <input type="submit" value="Зберегти">
+      <button type="button" onclick="closeEdit()">&#10006;</button>
+    </form>
+  </div>
+
+  <p id="counter"></p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Назва</th>
+        <th>Адреса</th>
+        <th>Місто</th>
+        <th>Країна</th>
+        <th>Зірки</th>
+        <th>Телефон</th>
+        <th>Дії</th>
+      </tr>
+    </thead>
+    <tbody id="hotels-body"></tbody>
+  </table>
+
+  <script src="/static/js/hotels.js"></script>
+  <script>getHotels();</script>
+</body>
+</html>
