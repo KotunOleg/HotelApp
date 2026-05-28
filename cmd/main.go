@@ -62,18 +62,16 @@ func main() {
 			bookings.DELETE("/:id", handlers.DeleteBooking)
 		}
 
-		employees := api.Group("/employees")
-		{
-			employees.GET("", handlers.GetEmployees)
-			employees.GET("/:id", handlers.GetEmployee)
-			employees.POST("", handlers.CreateEmployee)
-			employees.DELETE("/:id", handlers.DeleteEmployee)
-		}
-
 		reviews := api.Group("/reviews")
 		{
 			reviews.GET("", handlers.GetReviews)
 			reviews.POST("", handlers.CreateReview)
+		}
+
+		logs := api.Group("/logs")
+		{
+			logs.GET("", handlers.GetLogs)
+			logs.POST("", handlers.CreateLog)
 		}
 	}
 

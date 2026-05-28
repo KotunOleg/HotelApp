@@ -34,14 +34,16 @@ func Connect() {
 
 func Migrate() {
 	err := DB.AutoMigrate(
-		&models.Address{},
-		&models.User{},
+		&models.Permission{},
 		&models.Hotel{},
+		&models.User{},
 		&models.Room{},
-		&models.Bed{},
-		&models.Employee{},
+		&models.DiscountProgram{},
+		&models.UserDiscount{},
 		&models.Booking{},
+		&models.Payment{},
 		&models.Review{},
+		&models.EmployeeLog{},
 	)
 	if err != nil {
 		log.Fatalf("migration failed: %v", err)
