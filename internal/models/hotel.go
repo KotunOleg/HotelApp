@@ -1,15 +1,13 @@
 package models
 
-import "gorm.io/gorm"
-
 type Hotel struct {
-	gorm.Model
-	Name        string     `gorm:"not null" json:"name"`
-	Description string     `json:"description"`
-	ImageURL    string     `json:"image_url"`
-	AddressID   uint       `gorm:"not null" json:"address_id"`
-	Address     Address    `json:"address,omitempty"`
-	Rooms       []Room     `json:"rooms,omitempty"`
-	Employees   []Employee `json:"employees,omitempty"`
-	Reviews     []Review   `json:"reviews,omitempty"`
+	HotelID    int      `gorm:"primaryKey;autoIncrement" json:"hotel_id"`
+	Name       string   `gorm:"not null" json:"name"`
+	Address    string   `gorm:"not null" json:"address"`
+	City       string   `gorm:"not null" json:"city"`
+	Country    string   `gorm:"not null" json:"country"`
+	StarRating int      `gorm:"check:star_rating between 1 and 5" json:"star_rating"`
+	Phone      string   `json:"phone"`
+	Rooms      []Room   `json:"rooms,omitempty"`
+	Reviews    []Review `json:"reviews,omitempty"`
 }

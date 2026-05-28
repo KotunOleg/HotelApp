@@ -1,22 +1,14 @@
 package models
 
-import "gorm.io/gorm"
-
-type RoomClass string
-
-const (
-	RoomClassStandard RoomClass = "standard"
-	RoomClassDeluxe   RoomClass = "deluxe"
-	RoomClassSuite    RoomClass = "suite"
-)
-
 type Room struct {
-	gorm.Model
-	RoomNumber string    `gorm:"not null" json:"room_number"`
-	Identifier string    `gorm:"uniqueIndex;not null" json:"identifier"`
-	Class      RoomClass `gorm:"not null;default:'standard'" json:"class"`
-	HotelID    uint      `gorm:"not null" json:"hotel_id"`
-	Hotel      Hotel     `json:"hotel,omitempty"`
-	Beds       []Bed     `json:"beds,omitempty"`
-	Bookings   []Booking `json:"bookings,omitempty"`
+	RoomID        int       `gorm:"primaryKey;autoIncrement" json:"room_id"`
+	HotelID       int       `gorm:"not null" json:"hotel_id"`
+	Hotel         Hotel     `json:"hotel,omitempty"`
+	RoomNumber    string    `gorm:"not null" json:"room_number"`
+	RoomType      string    `gorm:"not null" json:"room_type"`
+	PricePerNight float64   `gorm:"type:decimal(10,2);not null" json:"price_per_night"`
+	Capacity      int       `gorm:"not null" json:"capacity"`
+	Floor         int       `gorm:"not null" json:"floor"`
+	Status        string    `gorm:"not null;default:'available'" json:"status"`
+	Bookings      []Booking `json:"bookings,omitempty"`
 }
