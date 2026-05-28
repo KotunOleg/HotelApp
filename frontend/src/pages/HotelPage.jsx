@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useParams, Link } from 'react-router-dom'
-import { MapPin, Phone, ArrowLeft, BedDouble, Users, Send, X, CalendarDays, CalendarX } from 'lucide-react'
+import { useParams, Link, useNavigate } from 'react-router-dom'
+import { MapPin, Phone, ArrowLeft, BedDouble, Users, Send, X, CalendarDays, CalendarX, LogIn } from 'lucide-react'
 import { api } from '../api'
+import { useAuth } from '../context/AuthContext'
 import StarRating from '../components/StarRating'
 
 const TYPE_UA = { standard: 'стандарт', deluxe: 'делюкс', suite: 'люкс' }
@@ -115,7 +116,7 @@ function RoomCard({ room, selectedDates, onBook }) {
           <p className="text-2xl font-bold text-gray-900">{room.price_per_night.toLocaleString()} ₴</p>
           <p className="text-xs text-gray-400">за ніч</p>
         </div>
-        <button onClick={() => !btnDisabled && onBook(room)} disabled={btnDisabled} className={btnClass}>
+        <button onClick={() => !btnDisabled && onBook(room)} disabled={btnDisabled} className={btnClass} title={!datesSelected ? 'Оберіть дати заїзду та виїзду' : undefined}>
           {btnLabel}
         </button>
       </div>
@@ -124,11 +125,11 @@ function RoomCard({ room, selectedDates, onBook }) {
 }
 
 // ── Booking modal ────────────────────────────────────────────────────────────
-function BookingModal({ room, prefillDates, onClose, onSuccess }) {
+function BookingModal({ room, prefillDates, userId, onClose, onSuccess }) {
   const [form, setForm] = useState({
     checkIn:  prefillDates?.checkIn  ?? '',
     checkOut: prefillDates?.checkOut ?? '',
-    guests: 1, userId: 1,
+    guests: 1,
   })
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -143,7 +144,7 @@ function BookingModal({ room, prefillDates, onClose, onSuccess }) {
     setLoading(true); setError('')
     try {
       await api.bookings.create({
-        user_id:        form.userId,
+        user_id:        userId,
         room_id:        room.room_id,
         check_in_date:  new Date(form.checkIn).toISOString(),
         check_out_date: new Date(form.checkOut).toISOString(),
@@ -228,11 +229,14 @@ function BookingModal({ room, prefillDates, onClose, onSuccess }) {
 // ── Main page ────────────────────────────────────────────────────────────────
 export default function HotelPage() {
   const { id } = useParams()
+  const { user } = useAuth()
+  const navigate = useNavigate()
   const [hotel, setHotel]         = useState(null)
   const [rooms, setRooms]         = useState([])
   const [reviews, setReviews]     = useState([])
   const [bookingRoom, setBooking] = useState(null)
   const [review, setReview]       = useState({ content: '', rating: 5 })
+  const [reviewError, setReviewError] = useState('')
   const [loading, setLoading]     = useState(true)
 
   // date filter
@@ -284,13 +288,24 @@ export default function HotelPage() {
     return matchType && matchStatus && matchCapacity && matchPrice
   }), [rooms, filterType, filterStatus, filterCapacity, filterMaxPrice])
 
+  function handleBook(room) {
+    if (!user) {
+      navigate('/login', { state: { from: `/hotels/${id}`, message: 'Увійдіть, щоб забронювати кімнату' } })
+      return
+    }
+    setBooking(room)
+  }
+
   async function submitReview(e) {
     e.preventDefault()
+    setReviewError('')
     try {
-      const rv = await api.reviews.create({ user_id: 1, hotel_id: +id, ...review })
+      const rv = await api.reviews.create({ user_id: user?.user_id ?? 0, hotel_id: +id, ...review })
       setReviews(prev => [rv, ...prev])
       setReview({ content: '', rating: 5 })
-    } catch (err) { alert(err.message) }
+    } catch (err) {
+      setReviewError(err.message)
+    }
   }
 
   if (loading) return (
@@ -448,7 +463,7 @@ export default function HotelPage() {
             {filteredRooms.map(r => (
               <RoomCard key={r.room_id} room={r}
                 selectedDates={{ checkIn, checkOut }}
-                onBook={setBooking} />
+                onBook={handleBook} />
             ))}
           </div>
         )}
@@ -459,24 +474,36 @@ export default function HotelPage() {
         <h2 className="text-xl font-bold text-gray-900 mb-4">
           Відгуки <span className="text-gray-400 font-normal text-base">({reviews.length})</span>
         </h2>
-        <form onSubmit={submitReview} className="card p-5 mb-6 space-y-3">
-          <p className="font-medium text-gray-800">Залишити відгук</p>
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-600">Оцінка:</label>
-            {[1,2,3,4,5].map(n => (
-              <button key={n} type="button"
-                onClick={() => setReview(r => ({ ...r, rating: n }))}
-                className={`text-2xl transition-transform hover:scale-110 ${n <= review.rating ? 'text-amber-400' : 'text-gray-200'}`}>
-                ★
-              </button>
-            ))}
+        {!user ? (
+          <div className="card p-5 mb-6 flex items-center gap-3 text-gray-500 text-sm">
+            <LogIn size={18} className="text-brand-400 shrink-0" />
+            <span>Щоб залишити відгук, <Link to="/login" className="text-brand-600 hover:underline font-medium">увійдіть в акаунт</Link> і переконайтесь, що ваше бронювання вже завершилось.</span>
           </div>
-          <textarea className="input resize-none" rows={3} placeholder="Поділіться враженнями..."
-            value={review.content} onChange={e => setReview(r => ({ ...r, content: e.target.value }))} required />
-          <button type="submit" className="btn-primary flex items-center gap-2 text-sm">
-            <Send size={15} /> Надіслати
-          </button>
-        </form>
+        ) : (
+          <form onSubmit={submitReview} className="card p-5 mb-6 space-y-3">
+            <p className="font-medium text-gray-800">Залишити відгук</p>
+            {reviewError && (
+              <div className="bg-amber-50 border border-amber-100 text-amber-700 text-sm px-4 py-3 rounded-xl">
+                {reviewError}
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600">Оцінка:</label>
+              {[1,2,3,4,5].map(n => (
+                <button key={n} type="button"
+                  onClick={() => setReview(r => ({ ...r, rating: n }))}
+                  className={`text-2xl transition-transform hover:scale-110 ${n <= review.rating ? 'text-amber-400' : 'text-gray-200'}`}>
+                  ★
+                </button>
+              ))}
+            </div>
+            <textarea className="input resize-none" rows={3} placeholder="Поділіться враженнями..."
+              value={review.content} onChange={e => setReview(r => ({ ...r, content: e.target.value }))} required />
+            <button type="submit" className="btn-primary flex items-center gap-2 text-sm">
+              <Send size={15} /> Надіслати
+            </button>
+          </form>
+        )}
         <div className="space-y-3">
           {reviews.map(rv => (
             <div key={rv.review_id} className="card p-5">
@@ -499,6 +526,7 @@ export default function HotelPage() {
         <BookingModal
           room={bookingRoom}
           prefillDates={{ checkIn, checkOut }}
+          userId={user?.user_id}
           onClose={() => setBooking(null)}
           onSuccess={() => loadRooms()}
         />

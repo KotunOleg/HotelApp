@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { Hotel, Eye, EyeOff } from 'lucide-react'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { Hotel, Eye, EyeOff, LogIn } from 'lucide-react'
 import { api } from '../api'
+import { useAuth } from '../context/AuthContext'
 
 export default function LoginPage() {
   const [form, setForm]       = useState({ login: '', password: '' })
@@ -9,14 +10,17 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState('')
   const navigate = useNavigate()
+  const { state } = useLocation()
+  const { login } = useAuth()
 
   async function submit(e) {
     e.preventDefault()
     setLoading(true)
     setError('')
     try {
-      await api.auth.login(form)
-      navigate('/')
+      const data = await api.auth.login(form)
+      login({ user_id: data.user_id, full_name: data.full_name, email: data.email })
+      navigate(state?.from ?? '/')
     } catch {
       setError('Невірний логін або пароль')
     } finally {
@@ -36,6 +40,11 @@ export default function LoginPage() {
         </div>
 
         <div className="card p-8">
+          {state?.message && (
+            <div className="bg-amber-50 border border-amber-100 text-amber-700 text-sm px-4 py-3 rounded-xl mb-5 flex items-center gap-2">
+              <LogIn size={15} /> {state.message}
+            </div>
+          )}
           {error && (
             <div className="bg-red-50 border border-red-100 text-red-700 text-sm px-4 py-3 rounded-xl mb-5">
               {error}

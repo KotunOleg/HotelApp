@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"time"
 
 	"hotel-app/internal/database"
 	"hotel-app/internal/models"
@@ -30,6 +31,30 @@ func CreateReview(c *gin.Context) {
 	var input CreateReviewInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// user must have a confirmed booking for this hotel that has already ended
+	var completedBooking models.Booking
+	err := database.DB.
+		Joins("JOIN rooms ON rooms.room_id = bookings.room_id").
+		Where(
+			"bookings.user_id = ? AND rooms.hotel_id = ? AND bookings.status = 'confirmed' AND bookings.check_out_date < ?",
+			input.UserID, input.HotelID, time.Now(),
+		).
+		First(&completedBooking).Error
+
+	if err != nil {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "відгук можна залишити лише після завершення підтвердженого бронювання в цьому готелі",
+		})
+		return
+	}
+
+	// prevent duplicate review for the same booking period
+	var existing models.Review
+	if database.DB.Where("user_id = ? AND hotel_id = ?", input.UserID, input.HotelID).First(&existing).Error == nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "ви вже залишили відгук для цього готелю"})
 		return
 	}
 

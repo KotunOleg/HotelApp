@@ -29,7 +29,7 @@ export const api = {
     delete: (id)     => request(`/beds/${id}`, { method: 'DELETE' }),
   },
   bookings: {
-    list:    ()     => request('/bookings'),
+    list:    (userId) => request(`/bookings${userId ? `?user_id=${userId}` : ''}`),
     create:  (data) => request('/bookings', { method: 'POST', body: data }),
     confirm: (id)   => request(`/bookings/${id}/confirm`, { method: 'PUT' }),
     cancel:  (id)   => request(`/bookings/${id}`, { method: 'DELETE' }),

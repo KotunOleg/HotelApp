@@ -21,7 +21,11 @@ type CreateBookingInput struct {
 
 func GetBookings(c *gin.Context) {
 	var bookings []models.Booking
-	database.DB.Preload("User").Preload("Room").Preload("Discount").Preload("Payment").Find(&bookings)
+	query := database.DB.Preload("User").Preload("Room").Preload("Discount").Preload("Payment")
+	if userID := c.Query("user_id"); userID != "" {
+		query = query.Where("user_id = ?", userID)
+	}
+	query.Find(&bookings)
 	c.JSON(http.StatusOK, bookings)
 }
 

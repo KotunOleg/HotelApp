@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { CalendarDays, BedDouble, MapPin, XCircle } from 'lucide-react'
+import { CalendarDays, BedDouble, MapPin, XCircle, User } from 'lucide-react'
 import { api } from '../api'
+import { useAuth } from '../context/AuthContext'
 
 const STATUS_CONFIG = {
   pending:   { label: 'Очікує',    cls: 'bg-yellow-100 text-yellow-700' },
@@ -18,19 +19,21 @@ function nights(checkIn, checkOut) {
 }
 
 export default function BookingsPage() {
+  const { user } = useAuth()
   const [bookings, setBookings] = useState([])
   const [loading, setLoading]   = useState(true)
   const [filter, setFilter]     = useState('all')
 
   const load = () => {
+    if (!user) return
     setLoading(true)
-    api.bookings.list()
+    api.bookings.list(user.user_id)
       .then(setBookings)
       .catch(console.error)
       .finally(() => setLoading(false))
   }
 
-  useEffect(load, [])
+  useEffect(load, [user])
 
   async function cancel(id) {
     if (!confirm('Скасувати бронювання?')) return
@@ -49,11 +52,22 @@ export default function BookingsPage() {
     return acc
   }, {})
 
+  if (!user) return (
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-24 text-center">
+      <User size={48} className="mx-auto text-gray-200 mb-4" />
+      <p className="text-xl font-bold text-gray-700 mb-2">Увійдіть в акаунт</p>
+      <p className="text-gray-500 text-sm mb-6">Щоб переглянути свої бронювання, спочатку авторизуйтесь</p>
+      <Link to="/login" className="btn-primary inline-block">Увійти</Link>
+    </div>
+  )
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Мої бронювання</h1>
-        <p className="text-gray-500 mt-1 text-sm">{bookings.length} загалом</p>
+        <p className="text-gray-500 mt-1 text-sm flex items-center gap-1.5">
+          <User size={14} /> {user.full_name} · {bookings.length} бронювань
+        </p>
       </div>
 
       {/* Filter tabs */}
