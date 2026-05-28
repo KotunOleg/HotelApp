@@ -11,18 +11,16 @@ import (
 )
 
 type RegisterInput struct {
-	FirstName string `json:"first_name" binding:"required"`
-	LastName  string `json:"last_name" binding:"required"`
-	Email     string `json:"email" binding:"required,email"`
-	Phone     string `json:"phone" binding:"required"`
-	Password  string `json:"password" binding:"required,min=6"`
+	Email           string `json:"email" binding:"required,email"`
+	Password        string `json:"password" binding:"required,min=6"`
+	Phone           string `json:"phone"`
+	FullName        string `json:"full_name" binding:"required"`
+	PermissionLevel int    `json:"permission_level" binding:"required"`
 }
 
 type UpdateUserInput struct {
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
-	Email     string `json:"email" binding:"omitempty,email"`
-	Phone     string `json:"phone"`
+	Phone    string `json:"phone"`
+	FullName string `json:"full_name"`
 }
 
 type ChangePasswordInput struct {
@@ -32,13 +30,13 @@ type ChangePasswordInput struct {
 
 func GetUsers(c *gin.Context) {
 	var users []models.User
-	database.DB.Find(&users)
+	database.DB.Preload("Permission").Find(&users)
 	c.JSON(http.StatusOK, users)
 }
 
 func GetUser(c *gin.Context) {
 	var user models.User
-	if err := database.DB.First(&user, c.Param("id")).Error; err != nil {
+	if err := database.DB.Preload("Permission").First(&user, c.Param("id")).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
 		return
 	}
@@ -59,15 +57,15 @@ func Register(c *gin.Context) {
 	}
 
 	user := models.User{
-		FirstName: input.FirstName,
-		LastName:  input.LastName,
-		Email:     input.Email,
-		Phone:     input.Phone,
-		Password:  string(hashed),
+		Email:           input.Email,
+		PasswordHash:    string(hashed),
+		Phone:           input.Phone,
+		FullName:        input.FullName,
+		PermissionLevel: input.PermissionLevel,
 	}
 
 	if err := database.DB.Create(&user).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "email or phone already in use"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "email already in use"})
 		return
 	}
 
@@ -104,13 +102,13 @@ func ChangePassword(c *gin.Context) {
 		return
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.OldPassword)); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.OldPassword)); err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "incorrect old password"})
 		return
 	}
 
 	hashed, _ := bcrypt.GenerateFromPassword([]byte(input.NewPassword), bcrypt.DefaultCost)
-	database.DB.Model(&user).Update("password", string(hashed))
+	database.DB.Model(&user).Update("password_hash", string(hashed))
 	c.JSON(http.StatusOK, gin.H{"message": "password updated"})
 }
 

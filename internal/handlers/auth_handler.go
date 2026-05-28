@@ -23,16 +23,15 @@ func Login(c *gin.Context) {
 	}
 
 	var user models.User
-	result := database.DB.Where("email = ? OR phone = ?", input.Login, input.Login).First(&user)
-	if result.Error != nil {
+	if err := database.DB.Where("email = ? OR phone = ?", input.Login, input.Login).First(&user).Error; err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
 		return
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.Password)); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.Password)); err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "login successful", "user_id": user.ID})
+	c.JSON(http.StatusOK, gin.H{"message": "login successful", "user_id": user.UserID})
 }

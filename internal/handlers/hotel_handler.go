@@ -10,30 +10,32 @@ import (
 )
 
 type CreateHotelInput struct {
-	Name        string `json:"name" binding:"required"`
-	Description string `json:"description"`
-	ImageURL    string `json:"image_url"`
-	Street      string `json:"street" binding:"required"`
-	City        string `json:"city" binding:"required"`
-	Country     string `json:"country" binding:"required"`
-	ZipCode     string `json:"zip_code"`
+	Name       string `json:"name" binding:"required"`
+	Address    string `json:"address" binding:"required"`
+	City       string `json:"city" binding:"required"`
+	Country    string `json:"country" binding:"required"`
+	StarRating int    `json:"star_rating" binding:"required,min=1,max=5"`
+	Phone      string `json:"phone"`
 }
 
 type UpdateHotelInput struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	ImageURL    string `json:"image_url"`
+	Name       string `json:"name"`
+	Address    string `json:"address"`
+	City       string `json:"city"`
+	Country    string `json:"country"`
+	StarRating int    `json:"star_rating" binding:"omitempty,min=1,max=5"`
+	Phone      string `json:"phone"`
 }
 
 func GetHotels(c *gin.Context) {
 	var hotels []models.Hotel
-	database.DB.Preload("Address").Find(&hotels)
+	database.DB.Find(&hotels)
 	c.JSON(http.StatusOK, hotels)
 }
 
 func GetHotel(c *gin.Context) {
 	var hotel models.Hotel
-	if err := database.DB.Preload("Address").Preload("Rooms").Preload("Reviews").First(&hotel, c.Param("id")).Error; err != nil {
+	if err := database.DB.Preload("Rooms").Preload("Reviews").First(&hotel, c.Param("id")).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "hotel not found"})
 		return
 	}
@@ -47,23 +49,15 @@ func CreateHotel(c *gin.Context) {
 		return
 	}
 
-	address := models.Address{
-		Street:  input.Street,
-		City:    input.City,
-		Country: input.Country,
-		ZipCode: input.ZipCode,
-	}
-	database.DB.Create(&address)
-
 	hotel := models.Hotel{
-		Name:        input.Name,
-		Description: input.Description,
-		ImageURL:    input.ImageURL,
-		AddressID:   address.ID,
+		Name:       input.Name,
+		Address:    input.Address,
+		City:       input.City,
+		Country:    input.Country,
+		StarRating: input.StarRating,
+		Phone:      input.Phone,
 	}
 	database.DB.Create(&hotel)
-	hotel.Address = address
-
 	c.JSON(http.StatusCreated, hotel)
 }
 

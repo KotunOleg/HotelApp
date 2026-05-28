@@ -10,10 +10,10 @@ import (
 )
 
 type CreateReviewInput struct {
-	UserID  uint   `json:"user_id" binding:"required"`
-	HotelID uint   `json:"hotel_id" binding:"required"`
+	UserID  int    `json:"user_id" binding:"required"`
+	HotelID int    `json:"hotel_id" binding:"required"`
+	Rating  int    `json:"rating" binding:"required,min=1,max=5"`
 	Content string `json:"content" binding:"required"`
-	Rating  uint   `json:"rating" binding:"required,min=1,max=5"`
 }
 
 func GetReviews(c *gin.Context) {
@@ -36,8 +36,8 @@ func CreateReview(c *gin.Context) {
 	review := models.Review{
 		UserID:  input.UserID,
 		HotelID: input.HotelID,
-		Content: input.Content,
 		Rating:  input.Rating,
+		Content: input.Content,
 	}
 	database.DB.Create(&review)
 	c.JSON(http.StatusCreated, review)

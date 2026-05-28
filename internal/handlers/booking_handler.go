@@ -11,22 +11,23 @@ import (
 )
 
 type CreateBookingInput struct {
-	UserID      uint      `json:"user_id" binding:"required"`
-	RoomID      uint      `json:"room_id" binding:"required"`
-	CheckIn     time.Time `json:"check_in" binding:"required"`
-	CheckOut    time.Time `json:"check_out" binding:"required"`
-	GuestsCount uint      `json:"guests_count" binding:"required,min=1"`
+	UserID       int       `json:"user_id" binding:"required"`
+	RoomID       int       `json:"room_id" binding:"required"`
+	DiscountID   *int      `json:"discount_id"`
+	CheckInDate  time.Time `json:"check_in_date" binding:"required"`
+	CheckOutDate time.Time `json:"check_out_date" binding:"required"`
+	TotalPrice   float64   `json:"total_price" binding:"required"`
 }
 
 func GetBookings(c *gin.Context) {
 	var bookings []models.Booking
-	database.DB.Preload("User").Preload("Room").Find(&bookings)
+	database.DB.Preload("User").Preload("Room").Preload("Discount").Preload("Payment").Find(&bookings)
 	c.JSON(http.StatusOK, bookings)
 }
 
 func GetBooking(c *gin.Context) {
 	var booking models.Booking
-	if err := database.DB.Preload("User").Preload("Room").First(&booking, c.Param("id")).Error; err != nil {
+	if err := database.DB.Preload("User").Preload("Room").Preload("Discount").Preload("Payment").First(&booking, c.Param("id")).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "booking not found"})
 		return
 	}
@@ -40,15 +41,15 @@ func CreateBooking(c *gin.Context) {
 		return
 	}
 
-	if !input.CheckOut.After(input.CheckIn) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "check_out must be after check_in"})
+	if !input.CheckOutDate.After(input.CheckInDate) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "check_out_date must be after check_in_date"})
 		return
 	}
 
 	var conflict models.Booking
 	err := database.DB.Where(
-		"room_id = ? AND check_in < ? AND check_out > ?",
-		input.RoomID, input.CheckOut, input.CheckIn,
+		"room_id = ? AND check_in_date < ? AND check_out_date > ? AND status != 'cancelled'",
+		input.RoomID, input.CheckOutDate, input.CheckInDate,
 	).First(&conflict).Error
 	if err == nil {
 		c.JSON(http.StatusConflict, gin.H{"error": "room is not available for selected dates"})
@@ -56,11 +57,13 @@ func CreateBooking(c *gin.Context) {
 	}
 
 	booking := models.Booking{
-		UserID:      input.UserID,
-		RoomID:      input.RoomID,
-		CheckIn:     input.CheckIn,
-		CheckOut:    input.CheckOut,
-		GuestsCount: input.GuestsCount,
+		UserID:       input.UserID,
+		RoomID:       input.RoomID,
+		DiscountID:   input.DiscountID,
+		CheckInDate:  input.CheckInDate,
+		CheckOutDate: input.CheckOutDate,
+		TotalPrice:   input.TotalPrice,
+		Status:       "pending",
 	}
 	database.DB.Create(&booking)
 	c.JSON(http.StatusCreated, booking)
@@ -72,6 +75,6 @@ func DeleteBooking(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "booking not found"})
 		return
 	}
-	database.DB.Delete(&booking)
+	database.DB.Model(&booking).Update("status", "cancelled")
 	c.JSON(http.StatusOK, gin.H{"message": "booking cancelled"})
 }

@@ -9,58 +9,34 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type CreateEmployeeInput struct {
-	FirstName string `json:"first_name" binding:"required"`
-	LastName  string `json:"last_name" binding:"required"`
-	Email     string `json:"email" binding:"required,email"`
-	Phone     string `json:"phone" binding:"required"`
-	Position  string `json:"position"`
-	HotelID   uint   `json:"hotel_id" binding:"required"`
+type CreateLogInput struct {
+	EmployeeID  int    `json:"employee_id" binding:"required"`
+	Action      string `json:"action" binding:"required"`
+	Description string `json:"description"`
 }
 
-func GetEmployees(c *gin.Context) {
-	var employees []models.Employee
-	database.DB.Find(&employees)
-	c.JSON(http.StatusOK, employees)
-}
-
-func GetEmployee(c *gin.Context) {
-	var employee models.Employee
-	if err := database.DB.First(&employee, c.Param("id")).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "employee not found"})
-		return
+func GetLogs(c *gin.Context) {
+	var logs []models.EmployeeLog
+	query := database.DB.Preload("Employee")
+	if empID := c.Query("employee_id"); empID != "" {
+		query = query.Where("employee_id = ?", empID)
 	}
-	c.JSON(http.StatusOK, employee)
+	query.Find(&logs)
+	c.JSON(http.StatusOK, logs)
 }
 
-func CreateEmployee(c *gin.Context) {
-	var input CreateEmployeeInput
+func CreateLog(c *gin.Context) {
+	var input CreateLogInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	employee := models.Employee{
-		FirstName: input.FirstName,
-		LastName:  input.LastName,
-		Email:     input.Email,
-		Phone:     input.Phone,
-		Position:  input.Position,
-		HotelID:   input.HotelID,
+	entry := models.EmployeeLog{
+		EmployeeID:  input.EmployeeID,
+		Action:      input.Action,
+		Description: input.Description,
 	}
-	if err := database.DB.Create(&employee).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "email already in use"})
-		return
-	}
-	c.JSON(http.StatusCreated, employee)
-}
-
-func DeleteEmployee(c *gin.Context) {
-	var employee models.Employee
-	if err := database.DB.First(&employee, c.Param("id")).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "employee not found"})
-		return
-	}
-	database.DB.Delete(&employee)
-	c.JSON(http.StatusOK, gin.H{"message": "employee deleted"})
+	database.DB.Create(&entry)
+	c.JSON(http.StatusCreated, entry)
 }
