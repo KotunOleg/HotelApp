@@ -189,7 +189,13 @@ function RoomForm({ hotels, onSave }) {
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="label">Номер кімнати</label>
-          <input className="input" placeholder="101" value={f.room_number} onChange={set('room_number')} required />
+          <input
+            className="input" placeholder="101" required
+            pattern="^[A-Za-z0-9][A-Za-z0-9\-]*$"
+            title="Лише цифри, літери та дефіс. Не може починатись з мінуса."
+            value={f.room_number}
+            onChange={e => setF(p => ({ ...p, room_number: e.target.value.replace(/^-+/, '') }))}
+          />
         </div>
         <div>
           <label className="label">Тип</label>

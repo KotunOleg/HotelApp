@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"regexp"
 
 	"hotel-app/internal/database"
 	"hotel-app/internal/models"
@@ -9,6 +10,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
+
+var roomNumberRe = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9\-]*$`)
 
 type CreateRoomInput struct {
 	HotelID       int     `json:"hotel_id" binding:"required"`
@@ -67,6 +70,11 @@ func CreateRoom(c *gin.Context) {
 	var input CreateRoomInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if !roomNumberRe.MatchString(input.RoomNumber) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "номер кімнати має починатись з літери або цифри і не містити спецсимволів"})
 		return
 	}
 
