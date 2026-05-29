@@ -14,9 +14,9 @@ type CreateRoomInput struct {
 	HotelID       int     `json:"hotel_id" binding:"required"`
 	RoomNumber    string  `json:"room_number" binding:"required"`
 	RoomType      string  `json:"room_type" binding:"required"`
-	PricePerNight float64 `json:"price_per_night" binding:"required"`
+	PricePerNight float64 `json:"price_per_night" binding:"required,gt=0"`
 	Capacity      int     `json:"capacity" binding:"required,min=1"`
-	Floor         int     `json:"floor" binding:"required"`
+	Floor         int     `json:"floor" binding:"required,min=1"`
 }
 
 func GetRooms(c *gin.Context) {

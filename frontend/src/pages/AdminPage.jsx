@@ -201,7 +201,7 @@ function RoomForm({ hotels, onSave }) {
       <div className="grid grid-cols-3 gap-3">
         <div>
           <label className="label">Ціна/ніч ₴</label>
-          <input type="number" className="input" placeholder="1500" value={f.price_per_night} onChange={set('price_per_night')} required />
+          <input type="number" className="input" placeholder="1500" min={1} step={0.01} value={f.price_per_night} onChange={set('price_per_night')} required />
         </div>
         <div>
           <label className="label">Місць</label>

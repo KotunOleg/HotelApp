@@ -423,14 +423,16 @@ export default function HotelPage() {
               </div>
               <div>
                 <p className="text-xs font-medium text-gray-500 mb-1">Мін. місць</p>
-                <input type="number" min={1} placeholder="Будь-яка"
-                  value={filterCapacity} onChange={e => setFilterCapacity(e.target.value)}
+                <input type="number" min={1} step={1} placeholder="Будь-яка"
+                  value={filterCapacity}
+                  onChange={e => setFilterCapacity(e.target.value < 1 ? '1' : e.target.value)}
                   className="input text-sm py-1.5 w-32" />
               </div>
               <div>
                 <p className="text-xs font-medium text-gray-500 mb-1">Макс. ціна ₴</p>
-                <input type="number" min={0} placeholder={maxPrice ? maxPrice.toLocaleString() : '—'}
-                  value={filterMaxPrice} onChange={e => setFilterMaxPrice(e.target.value)}
+                <input type="number" min={1} step={1} placeholder={maxPrice ? maxPrice.toLocaleString() : '—'}
+                  value={filterMaxPrice}
+                  onChange={e => setFilterMaxPrice(e.target.value < 1 ? '1' : e.target.value)}
                   className="input text-sm py-1.5 w-36" />
               </div>
               {activeRoomFilters > 0 && (
